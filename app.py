@@ -1,16 +1,31 @@
 import streamlit as st
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
 
+# Load API key
+load_dotenv()
+
+genai.configure(
+    api_key=os.getenv("GEMINI_API_KEY")
+)
+
+model = genai.GenerativeModel("gemini-1.5-flash")
+
+# Page config
 st.set_page_config(
     page_title="Career Compass AI",
     page_icon="🎯",
     layout="wide"
 )
 
+# Title
 st.title("🎯 Career Compass AI")
 st.subheader("Find Your Direction. Build Your Future.")
 
 st.markdown("---")
 
+# Inputs
 name = st.text_input("Your Name")
 
 skills = st.text_area(
@@ -28,113 +43,47 @@ dream = st.text_input(
     placeholder="AI Engineer"
 )
 
+# Button
 if st.button("Generate Career Report"):
 
-    if not skills or not dream:
-        st.warning("Please enter your skills and dream career.")
+    if not name or not skills or not interests or not dream:
+        st.warning("Please fill all fields.")
     else:
 
-        st.success("Career Report Generated Successfully!")
+        prompt = f"""
+        Student Name: {name}
 
-        st.markdown("---")
+        Skills:
+        {skills}
 
-        st.markdown(f"""
-# 👋 Hello {name}!
+        Interests:
+        {interests}
 
-## 🎯 Career Analysis
-Your interest in **{dream}** aligns well with your skills and interests. With consistent effort and practical experience, you can successfully achieve this career goal.
+        Dream Career:
+        {dream}
 
----
+        Act as a professional career counselor.
 
-## 📊 Skill Gap Analysis
+        Create a detailed personalized career report.
 
-### Current Strengths
-- {skills}
+        Include:
 
-### Areas to Improve
-- Advanced technical knowledge
-- Industry-level projects
-- Communication and teamwork
-- Problem-solving skills
+        1. Career Analysis
+        2. Strengths
+        3. Skills to Improve
+        4. Learning Roadmap
+        5. Recommended Certifications
+        6. Future Job Opportunities
+        7. Salary Expectations
+        8. Final Motivation
 
----
+        Format beautifully using markdown.
+        """
 
-## 🛣️ Learning Roadmap
+        with st.spinner("Analyzing your profile..."):
 
-### 📅 Next 30 Days
-- Learn core concepts
-- Complete one mini project
-- Build a study schedule
+            response = model.generate_content(prompt)
 
-### 📅 Next 3 Months
-- Complete online courses
-- Build 2 portfolio projects
-- Improve problem-solving skills
+            st.success("Career Report Generated Successfully!")
 
-### 📅 Next 6 Months
-- Earn certifications
-- Participate in hackathons
-- Create a strong LinkedIn profile
-
-### 📅 Next 1 Year
-- Apply for internships
-- Build advanced projects
-- Prepare for interviews
-
----
-
-## 💼 Suitable Job Roles
-
-- {dream}
-- Associate {dream}
-- Analyst
-- Consultant
-- Specialist
-
----
-
-## 🏆 Recommended Certifications
-
-- Google Career Certificates
-- AWS Certifications
-- Microsoft Learn Certifications
-- Coursera Professional Certificates
-
----
-
-## 🚀 Project Ideas
-
-### Beginner
-Create a simple portfolio website.
-
-### Intermediate
-Build a real-world application related to your field.
-
-### Advanced
-Develop an AI-powered or industry-focused solution.
-
----
-
-## 💰 Salary Outlook
-
-### Fresher
-₹4–8 LPA
-
-### 3 Years Experience
-₹10–18 LPA
-
-### 5 Years Experience
-₹18–30 LPA
-
----
-
-## ⭐ Career Readiness Score
-
-80 / 100
-
----
-
-## 🎉 Final Recommendation
-
-Focus on continuous learning, practical projects, networking, and certifications. Stay consistent and your chances of reaching your dream career will improve significantly.
-""")
+            st.markdown(response.text)

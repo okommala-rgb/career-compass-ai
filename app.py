@@ -1,4 +1,6 @@
 import streamlit as st
+import requests
+from translations import translations
 
 st.set_page_config(
     page_title="Career Compass AI",
@@ -6,37 +8,125 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🎯 Career Compass AI")
-st.subheader("Find Your Direction. Build Your Future.")
+# Sidebar
+
+language = st.sidebar.selectbox(
+    "Language",
+    ["English", "తెలుగు"]
+)
+
+t = translations[language]
+
+st.sidebar.title("AI Settings")
+
+ai_provider = st.sidebar.selectbox(
+    "AI Provider",
+    ["Built-In", "Ollama"]
+)
+
+user_api_key = st.sidebar.text_input(
+    "Bring Your Own API Key",
+    type="password"
+)
+
+if user_api_key:
+    st.sidebar.success("API Key Added")
+
+
+# Ollama Function
+
+def ask_ollama(prompt):
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "llama3",
+                "prompt": prompt,
+                "stream": False
+            }
+        )
+
+        return response.json()["response"]
+
+    except Exception:
+        return """
+        ❌ Ollama is not running.
+
+        Please install Ollama and run:
+
+        ollama pull llama3
+
+        then
+
+        ollama run llama3
+        """
+
+
+# Main UI
+
+st.title(t["title"])
+st.subheader(t["subtitle"])
 
 st.markdown("---")
 
-name = st.text_input("Your Name")
+name = st.text_input(t["name"])
 
 skills = st.text_area(
-    "Your Skills",
+    t["skills"],
     placeholder="Python, Machine Learning, Communication, DSA..."
 )
 
 interests = st.text_area(
-    "Your Interests",
+    t["interests"],
     placeholder="AI, Startups, Robotics, Design..."
 )
 
 dream = st.text_input(
-    "Dream Career",
+    t["dream"],
     placeholder="AI Engineer"
 )
 
-if st.button("Generate Career Report"):
+if st.button(t["button"]):
 
     if not skills or not dream:
         st.warning("Please enter your skills and dream career.")
+
     else:
 
-        st.success("Career Report Generated Successfully!")
+        if ai_provider == "Ollama":
 
-        st.markdown(f"""
+            prompt = f"""
+            Name: {name}
+
+            Skills:
+            {skills}
+
+            Interests:
+            {interests}
+
+            Dream Career:
+            {dream}
+
+            Generate:
+            1. Career Analysis
+            2. Skill Gap Analysis
+            3. Learning Roadmap
+            4. Suitable Job Roles
+            5. Certifications
+            6. Salary Outlook
+            7. Final Recommendation
+            """
+
+            report = ask_ollama(prompt)
+
+            st.success("AI Career Report Generated")
+            st.markdown(report)
+
+        else:
+
+            st.success("Career Report Generated Successfully!")
+
+            st.markdown(f"""
 # 👋 Hello {name}!
 
 ## 🎯 Career Analysis

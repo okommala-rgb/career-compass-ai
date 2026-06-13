@@ -1,17 +1,24 @@
 import streamlit as st
+import requests
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 from translations import translations
 
-# Load .env for local development
+# =========================
+# Load Environment Variables
+# =========================
+
 load_dotenv()
 
-# Gemini API Key
 try:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 except:
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# =========================
+# Page Config
+# =========================
 
 st.set_page_config(
     page_title="Career Compass AI",
@@ -30,8 +37,12 @@ language = st.sidebar.selectbox(
 
 t = translations[language]
 
-st.sidebar.title("Career Compass AI")
-st.sidebar.success("Powered by Gemini AI")
+st.sidebar.title("AI Settings")
+
+ai_provider = st.sidebar.selectbox(
+    "AI Provider",
+    ["Gemini", "Ollama"]
+)
 
 # =========================
 # Gemini Function
@@ -51,6 +62,35 @@ def ask_gemini(prompt):
 
     except Exception as e:
         return f"❌ Gemini Error:\n\n{str(e)}"
+
+# =========================
+# Ollama Function
+# =========================
+
+def ask_ollama(prompt):
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "llama3",
+                "prompt": prompt,
+                "stream": False
+            },
+            timeout=120
+        )
+
+        response.raise_for_status()
+
+        return response.json()["response"]
+
+    except Exception:
+        return """
+⚠️ Ollama is not available on this deployment.
+
+Ollama works only in the local desktop version where Ollama is installed and running.
+
+Please select Gemini to continue.
+"""
 
 # =========================
 # Main UI
@@ -85,11 +125,6 @@ if st.button(t["button"]):
             "Please enter your skills and dream career."
         )
 
-    elif not GEMINI_API_KEY:
-        st.error(
-            "Gemini API Key not configured."
-        )
-
     else:
 
         prompt = f"""
@@ -113,8 +148,7 @@ Generate a professional report with:
 
 # Skill Gap Analysis
 
-# Learning Roadmap
-(3 Month Plan)
+# Learning Roadmap (3 Month Plan)
 
 # Suitable Job Roles
 
@@ -131,10 +165,31 @@ Use bullet points and proper formatting.
 
         with st.spinner("Generating Career Report..."):
 
-            report = ask_gemini(prompt)
+            if ai_provider == "Gemini":
 
-            st.success(
-                "Career Report Generated Successfully"
-            )
+                if not GEMINI_API_KEY:
+                    st.error(
+                        "Gemini API Key not configured."
+                    )
 
-            st.markdown(report)
+                else:
+                    report = ask_gemini(prompt)
+
+                    st.success(
+                        "Gemini AI Career Report Generated"
+                    )
+
+                    st.markdown(report)
+
+            else:
+
+                report = ask_ollama(prompt)
+
+                if "⚠️" in report:
+                    st.warning(report)
+                else:
+                    st.success(
+                        "Ollama AI Career Report Generated"
+                    )
+
+                    st.markdown(report)

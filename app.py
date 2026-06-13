@@ -44,13 +44,18 @@ ai_provider = st.sidebar.selectbox(
     ["Gemini", "Ollama"]
 )
 
+user_api_key = st.sidebar.text_input(
+    "Bring Your Own API Key",
+    type="password"
+)
+
 # =========================
 # Gemini Function
 # =========================
 
-def ask_gemini(prompt):
+def ask_gemini(prompt, api_key):
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
+        genai.configure(api_key=api_key)
 
         model = genai.GenerativeModel(
             "gemini-2.5-flash"
@@ -83,13 +88,19 @@ def ask_ollama(prompt):
 
         return response.json()["response"]
 
-    except Exception:
-        return """
-⚠️ Ollama is not available on this deployment.
+    except Exception as e:
+        return f"""
+❌ Ollama Error
 
-Ollama works only in the local desktop version where Ollama is installed and running.
+{str(e)}
 
-Please select Gemini to continue.
+Ollama works when running locally.
+
+Commands:
+
+ollama pull llama3
+
+ollama run llama3
 """
 
 # =========================
@@ -148,7 +159,8 @@ Generate a professional report with:
 
 # Skill Gap Analysis
 
-# Learning Roadmap (3 Month Plan)
+# Learning Roadmap
+(3 Month Plan)
 
 # Suitable Job Roles
 
@@ -167,13 +179,23 @@ Use bullet points and proper formatting.
 
             if ai_provider == "Gemini":
 
-                if not GEMINI_API_KEY:
+                api_key_to_use = (
+                    user_api_key
+                    if user_api_key
+                    else GEMINI_API_KEY
+                )
+
+                if not api_key_to_use:
                     st.error(
-                        "Gemini API Key not configured."
+                        "Please enter your Gemini API Key or configure a default key."
                     )
 
                 else:
-                    report = ask_gemini(prompt)
+
+                    report = ask_gemini(
+                        prompt,
+                        api_key_to_use
+                    )
 
                     st.success(
                         "Gemini AI Career Report Generated"
@@ -185,11 +207,8 @@ Use bullet points and proper formatting.
 
                 report = ask_ollama(prompt)
 
-                if "⚠️" in report:
-                    st.warning(report)
-                else:
-                    st.success(
-                        "Ollama AI Career Report Generated"
-                    )
+                st.success(
+                    "Ollama AI Career Report Generated"
+                )
 
-                    st.markdown(report)
+                st.markdown(report)

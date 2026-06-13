@@ -1,6 +1,17 @@
 import streamlit as st
-import requests
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
 from translations import translations
+
+# Load .env for local development
+load_dotenv()
+
+# Gemini API Key
+try:
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+except:
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 st.set_page_config(
     page_title="Career Compass AI",
@@ -8,7 +19,9 @@ st.set_page_config(
     layout="wide"
 )
 
+# =========================
 # Sidebar
+# =========================
 
 language = st.sidebar.selectbox(
     "Language",
@@ -17,52 +30,31 @@ language = st.sidebar.selectbox(
 
 t = translations[language]
 
-st.sidebar.title("AI Settings")
+st.sidebar.title("Career Compass AI")
+st.sidebar.success("Powered by Gemini AI")
 
-ai_provider = st.sidebar.selectbox(
-    "AI Provider",
-    ["Built-In", "Ollama"]
-)
+# =========================
+# Gemini Function
+# =========================
 
-user_api_key = st.sidebar.text_input(
-    "Bring Your Own API Key",
-    type="password"
-)
-
-if user_api_key:
-    st.sidebar.success("API Key Added")
-
-
-# Ollama Function
-
-def ask_ollama(prompt):
+def ask_gemini(prompt):
     try:
-        response = requests.post(
-            "http://localhost:11434/api/generate",
-            json={
-                "model": "llama3",
-                "prompt": prompt,
-                "stream": False
-            }
+        genai.configure(api_key=GEMINI_API_KEY)
+
+        model = genai.GenerativeModel(
+            "gemini-2.5-flash"
         )
 
-        return response.json()["response"]
+        response = model.generate_content(prompt)
 
-    except Exception:
-        return """
-        ❌ Ollama is not running.
+        return response.text
 
-        Please install Ollama and run:
+    except Exception as e:
+        return f"❌ Gemini Error:\n\n{str(e)}"
 
-        ollama pull llama3
-
-        then
-
-        ollama run llama3
-        """
-
-
+# =========================
 # Main UI
+# =========================
 
 st.title(t["title"])
 st.subheader(t["subtitle"])
@@ -89,123 +81,60 @@ dream = st.text_input(
 if st.button(t["button"]):
 
     if not skills or not dream:
-        st.warning("Please enter your skills and dream career.")
+        st.warning(
+            "Please enter your skills and dream career."
+        )
+
+    elif not GEMINI_API_KEY:
+        st.error(
+            "Gemini API Key not configured."
+        )
 
     else:
 
-        if ai_provider == "Ollama":
+        prompt = f"""
+You are an expert AI Career Counselor.
 
-            prompt = f"""
-            Name: {name}
+Student Name:
+{name}
 
-            Skills:
-            {skills}
-
-            Interests:
-            {interests}
-
-            Dream Career:
-            {dream}
-
-            Generate:
-            1. Career Analysis
-            2. Skill Gap Analysis
-            3. Learning Roadmap
-            4. Suitable Job Roles
-            5. Certifications
-            6. Salary Outlook
-            7. Final Recommendation
-            """
-
-            report = ask_ollama(prompt)
-
-            st.success("AI Career Report Generated")
-            st.markdown(report)
-
-        else:
-
-            st.success("Career Report Generated Successfully!")
-
-            st.markdown(f"""
-# 👋 Hello {name}!
-
-## 🎯 Career Analysis
-Your interest in **{dream}** aligns well with your skills and interests.
-
-### Skills
+Skills:
 {skills}
 
-### Interests
+Interests:
 {interests}
 
----
+Dream Career:
+{dream}
 
-## 📊 Skill Gap Analysis
+Generate a professional report with:
 
-### Current Strengths
-- Strong interest in the field
-- Relevant foundational skills
-- Motivation to learn
+# Career Analysis
 
-### Areas to Improve
-- Advanced domain knowledge
-- Real-world projects
-- Communication and teamwork
+# Skill Gap Analysis
 
----
+# Learning Roadmap
+(3 Month Plan)
 
-## 🛣️ Learning Roadmap
+# Suitable Job Roles
 
-### Next 30 Days
-- Learn fundamentals
-- Complete one mini project
+# Recommended Certifications
 
-### Next 3 Months
-- Complete online courses
-- Build portfolio projects
+# Salary Outlook
 
-### Next 6 Months
-- Earn certifications
-- Participate in competitions
+# Projects To Build
 
-### Next 1 Year
-- Apply for internships
-- Build advanced projects
+# Final Recommendation
 
----
+Use bullet points and proper formatting.
+"""
 
-## 💼 Suitable Job Roles
+        with st.spinner("Generating Career Report..."):
 
-- {dream}
-- Associate {dream}
-- Specialist
-- Consultant
+            report = ask_gemini(prompt)
 
----
+            st.success(
+                "Career Report Generated Successfully"
+            )
 
-## 🏆 Recommended Certifications
-
-- Google Certifications
-- AWS Certifications
-- Microsoft Learn
-- Coursera Professional Certificates
-
----
-
-## 💰 Salary Outlook
-
-### Fresher
-₹4–8 LPA
-
-### 3 Years Experience
-₹10–18 LPA
-
-### 5 Years Experience
-₹18–30 LPA
-
----
-
-## ⭐ Final Recommendation
-
-Stay consistent, keep learning, and build practical projects related to **{dream}**.
-""")
+            st.markdown(report)
